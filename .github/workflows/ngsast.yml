@@ -1,0 +1,55 @@
+# This is a basic workflow to help you get started with Actions
+
+name: ShiftLeft Scan
+
+# Controls when the action will run. 
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v1.4.3
+        with:
+          java-version: 15.0.x
+      - name: Package with maven
+        run: ./mvnw clean install -B -DskipTests
+      - name: Download ShiftLeft CLI
+        run: |
+          curl https://cdn.shiftleft.io/download/sl > ${GITHUB_WORKSPACE}/sl && chmod a+rx ${GITHUB_WORKSPACE}/sl
+        # ShiftLeft requires Java 1.8. Post the package step override the version
+      - name: Setup Java JDK
+        uses: actions/setup-java@v1.4.3
+        with:
+          java-version: 1.8
+      - name: NG SAST Trunk
+        # Removed the --wait since we wont be checking the scan
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: ${GITHUB_WORKSPACE}/sl analyze --app webgoat8 --tag app.group=VBD --tag branch=${{ github.head_ref || steps.extract_branch.outputs.branch }} --java --cpg webgoat-server/target/webgoat-server-?.?.?.jar
+        env:
+          SHIFTLEFT_ACCESS_TOKEN: ${{ secrets.SHIFTLEFT_ACCESS_TOKEN }}
+          SHIFTLEFT_ORG_ID: ${{ secrets.SHIFTLEFT_ORG_ID }}
+      - name: NG SAST PR
+        # --wait in place because we will run check-analysis with this scan
+        if: ${{ github.event_name == 'pull_request' }}
+        run: ${GITHUB_WORKSPACE}/sl analyze --wait --app webgoat8 --tag app.group=VBD --tag branch=${{ github.head_ref || steps.extract_branch.outputs.branch }} --java --cpg webgoat-server/target/webgoat-server-?.?.?.jar
+        env:
+          SHIFTLEFT_ACCESS_TOKEN: ${{ secrets.SHIFTLEFT_ACCESS_TOKEN }}
+          SHIFTLEFT_ORG_ID: ${{ secrets.SHIFTLEFT_ORG_ID }}
