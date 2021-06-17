@@ -30,4 +30,4 @@ jobs:
         with:
           java-version: 11.0.x
       - name: Package with maven
-        run: ./mvnw compile install
+        run: ./mvnw clean install
