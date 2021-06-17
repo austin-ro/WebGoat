@@ -30,4 +30,4 @@ jobs:
         with:
           java-version: 15.0.x
       - name: Package with maven
-        run: ./mvnw clean install -DskipTests
+        run: ./mvnw clean install -B -DskipTests
